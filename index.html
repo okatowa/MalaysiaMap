@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--
+    Content Security Policy:
+    - 自サイトのスクリプトと Google Maps に必要なドメインのみ許可
+    - インラインスクリプトは一切許可しない（XSS 対策）
+    ※ Google Maps 公式ドキュメント推奨の CSP をベースにしています
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:; img-src 'self' https://*.googleapis.com https://*.gstatic.com *.google.com *.googleusercontent.com data:; frame-src *.google.com; connect-src 'self' https://*.googleapis.com *.google.com https://*.gstatic.com data: blob:; font-src https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; worker-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>マレーシア ショッピングモールガイド</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <h1>マレーシア ショッピングモールガイド</h1>
+    <p>地図からモールを探したり、新しいモールを追加したりできます。</p>
+  </header>
+
+  <main class="layout">
+    <section class="map-area" aria-label="地図">
+      <div id="map" class="map"></div>
+      <p id="map-message" class="map-message">地図を読み込み中…</p>
+    </section>
+
+    <aside class="side">
+      <section class="panel" aria-labelledby="add-title">
+        <h2 id="add-title">モールを追加</h2>
+        <form id="mall-form" autocomplete="off">
+          <label class="field">
+            <span>モール名 <em>*</em></span>
+            <input id="f-name" type="text" required maxlength="100">
+          </label>
+
+          <label class="field">
+            <span>州・地域 <em>*</em></span>
+            <select id="f-state" required>
+              <option value="">選択してください</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>紹介文</span>
+            <textarea id="f-desc" rows="3" maxlength="500"></textarea>
+          </label>
+
+          <label class="field">
+            <span>公式サイト URL</span>
+            <input id="f-url" type="url" maxlength="300" placeholder="https://">
+          </label>
+
+          <fieldset class="field location">
+            <legend>場所 <em>*</em></legend>
+            <p class="hint">地図をクリックするとピンが置かれます。ピンはドラッグで調整できます。</p>
+            <div class="latlng">
+              <label>緯度 <input id="f-lat" type="number" step="any" min="-90" max="90" required></label>
+              <label>経度 <input id="f-lng" type="number" step="any" min="-180" max="180" required></label>
+            </div>
+          </fieldset>
+
+          <p id="form-error" class="form-error" role="alert" hidden></p>
+
+          <div class="buttons">
+            <button type="submit" class="btn primary">追加する</button>
+            <button type="reset" class="btn">クリア</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="list-title">
+        <div class="list-head">
+          <h2 id="list-title">モール一覧</h2>
+          <span id="count" class="count"></span>
+        </div>
+        <div class="filters">
+          <input id="search" type="search" placeholder="名前・紹介文で検索" maxlength="100" aria-label="検索">
+          <select id="filter-state" aria-label="州で絞り込み">
+            <option value="">すべての州</option>
+          </select>
+        </div>
+        <ul id="mall-list" class="mall-list"></ul>
+        <button id="reset-data" type="button" class="btn small">サンプルデータに戻す</button>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="site-footer">
+    <p>追加したデータはこのブラウザ内（localStorage）にのみ保存されます。</p>
+  </footer>
+</body>
+</html>
