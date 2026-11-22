@@ -12,7 +12,7 @@
  */
 (() => {
   const STORAGE_KEY = 'malaysia-malls:v1';
-  const MALAYSIA_CENTER = { lat: 4.2105, lng: 108.0 };
+  const MALAYSIA_CENTER = { lat: 4.2105, lng: 108.0 }; // 半島部とボルネオ島の両方が入る中心
   // マレーシア国内のおおよその範囲（半島部＋ボルネオ島）
   const MALAYSIA_BOUNDS = { minLat: 0.5, maxLat: 7.6, minLng: 99.5, maxLng: 119.5 };
   const LIMITS = { name: 100, description: 500, url: 300 };
@@ -83,12 +83,10 @@
 
   const app = {
     malls: [],
-    map: null,
-    infoWindow: null,
-    markers: new Map(),
-    draftMarker: null,
-    AdvancedMarkerElement: null,
-    PinElement: null,
+    map: null,          // L.Map
+    markerLayer: null,  // モールのピンをまとめる L.LayerGroup
+    markers: new Map(), // id -> L.Marker
+    draftMarker: null,  // 追加用の赤いピン
   };
 
   // ---------- 検証ユーティリティ ----------
@@ -228,38 +226,34 @@
 
   function renderMarkers(list) {
     if (!app.map) return;
-    for (const marker of app.markers.values()) marker.map = null;
+    app.markerLayer.clearLayers();
     app.markers.clear();
-    app.infoWindow.close();
 
     for (const mall of list) {
-      const marker = new app.AdvancedMarkerElement({
-        map: app.map,
-        position: { lat: mall.lat, lng: mall.lng },
-        title: mall.name,
-      });
-      marker.addListener('click', () => openInfo(mall, marker));
+      // title はブラウザが属性値として扱うだけなので HTML として解釈されない
+      const marker = L.marker([mall.lat, mall.lng], { title: mall.name, alt: mall.name });
+      // 文字列ではなく DOM 要素を渡す（Leaflet は文字列を innerHTML で入れるため）
+      marker.bindPopup(() => popupContent(mall));
+      marker.addTo(app.markerLayer);
       app.markers.set(mall.id, marker);
     }
   }
 
-  function openInfo(mall, marker) {
+  function popupContent(mall) {
     const box = create('div', 'info');
     box.append(create('h3', '', mall.name));
     box.append(create('p', 'state', STATES[mall.state]));
     if (mall.description) box.append(create('p', '', mall.description));
     if (mall.url) box.append(externalLink(mall.url, '公式サイト'));
-    app.infoWindow.setContent(box);
-    app.infoWindow.open({ anchor: marker, map: app.map });
+    return box;
   }
 
   function focusMall(id) {
     const mall = app.malls.find((m) => m.id === id);
     const marker = app.markers.get(id);
     if (!app.map || !mall || !marker) return;
-    app.map.panTo({ lat: mall.lat, lng: mall.lng });
-    app.map.setZoom(15);
-    openInfo(mall, marker);
+    app.map.setView([mall.lat, mall.lng], 15);
+    marker.openPopup();
     el.map.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
@@ -328,13 +322,6 @@
   }
 
   // ---------- 新規追加用ピン ----------
-  function readPosition(pos) {
-    if (!pos) return null;
-    const lat = typeof pos.lat === 'function' ? pos.lat() : pos.lat;
-    const lng = typeof pos.lng === 'function' ? pos.lng() : pos.lng;
-    return { lat, lng };
-  }
-
   function setLatLngInputs(lat, lng) {
     el.lat.value = lat.toFixed(6);
     el.lng.value = lng.toFixed(6);
@@ -342,28 +329,30 @@
 
   function placeDraftMarker(lat, lng) {
     if (!app.map) return;
-    const position = { lat, lng };
     if (!app.draftMarker) {
-      const pin = new app.PinElement({ background: '#e11d48', borderColor: '#9f1239', glyphColor: '#ffffff' });
-      app.draftMarker = new app.AdvancedMarkerElement({
-        map: app.map,
-        position,
-        content: pin.element || pin,
-        gmpDraggable: true,
-        title: '新しいモールの場所（ドラッグで移動できます）',
+      const icon = L.divIcon({
+        className: 'draft-pin',
+        iconSize: [26, 26],
+        iconAnchor: [13, 26],
       });
-      app.draftMarker.addListener('dragend', () => {
-        const p = readPosition(app.draftMarker.position);
-        if (p) setLatLngInputs(p.lat, p.lng);
+      app.draftMarker = L.marker([lat, lng], {
+        icon,
+        draggable: true,
+        title: '新しいモールの場所（ドラッグで移動できます）',
+        zIndexOffset: 1000,
+      });
+      app.draftMarker.on('dragend', () => {
+        const p = app.draftMarker.getLatLng();
+        setLatLngInputs(p.lat, p.lng);
       });
     } else {
-      app.draftMarker.position = position;
-      app.draftMarker.map = app.map;
+      app.draftMarker.setLatLng([lat, lng]);
     }
+    app.draftMarker.addTo(app.map);
   }
 
   function clearDraftMarker() {
-    if (app.draftMarker) app.draftMarker.map = null;
+    if (app.draftMarker) app.draftMarker.remove();
   }
 
   function onLatLngInput() {
@@ -371,77 +360,37 @@
     const lng = Number(el.lng.value);
     if (el.lat.value.trim() === '' || el.lng.value.trim() === '' || !isLat(lat) || !isLng(lng)) return;
     placeDraftMarker(lat, lng);
-    if (app.map) app.map.panTo({ lat, lng });
+    if (app.map) app.map.panTo([lat, lng]);
   }
 
-  // ---------- Google Maps 読み込み ----------
+  // ---------- 地図（Leaflet + OpenStreetMap） ----------
   function showMapMessage(message) {
     el.mapMessage.textContent = message;
     el.mapMessage.hidden = false;
   }
 
-  async function initMap() {
-    try {
-      const { Map: GoogleMap, InfoWindow } = await google.maps.importLibrary('maps');
-      const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary('marker');
-      app.AdvancedMarkerElement = AdvancedMarkerElement;
-      app.PinElement = PinElement;
-
-      const cfg = window.APP_CONFIG || {};
-      app.map = new GoogleMap(el.map, {
-        center: MALAYSIA_CENTER,
-        zoom: 6,
-        mapId: cfg.MAP_ID || 'DEMO_MAP_ID',
-        streetViewControl: false,
-        mapTypeControl: false,
-      });
-      app.infoWindow = new InfoWindow();
-
-      app.map.addListener('click', (e) => {
-        if (e.placeId) e.stop(); // Google 既定の POI 情報ウィンドウを抑止
-        if (!e.latLng) return;
-        const lat = e.latLng.lat();
-        const lng = e.latLng.lng();
-        setLatLngInputs(lat, lng);
-        placeDraftMarker(lat, lng);
-        showError('');
-      });
-
-      el.mapMessage.hidden = true;
-      document.body.classList.add('map-ready');
-      render();
-    } catch (err) {
-      console.error(err);
-      showMapMessage('地図の初期化に失敗しました。緯度・経度を直接入力して追加することはできます。');
-    }
-  }
-
-  function loadGoogleMaps() {
-    const cfg = window.APP_CONFIG || {};
-    const key = typeof cfg.GOOGLE_MAPS_API_KEY === 'string' ? cfg.GOOGLE_MAPS_API_KEY.trim() : '';
-    if (!key || key === 'YOUR_API_KEY') {
-      showMapMessage('Google Maps の API キーが設定されていません（js/config.js）。一覧と追加機能は利用できます。');
+  function initMap() {
+    if (typeof window.L === 'undefined') {
+      showMapMessage('地図ライブラリを読み込めませんでした。緯度・経度を直接入力して追加することはできます。');
       return;
     }
-    // Google Maps が呼び出すグローバル関数
-    window.initMap = initMap;
-    window.gm_authFailure = () => {
-      showMapMessage('Google Maps の API キー認証に失敗しました。キーとリファラー制限を確認してください。');
-    };
+    app.map = L.map(el.map, { worldCopyJump: true }).setView([MALAYSIA_CENTER.lat, MALAYSIA_CENTER.lng], 6);
 
-    const params = new URLSearchParams({
-      key,
-      callback: 'initMap',
-      loading: 'async',
-      v: 'weekly',
-      language: 'ja',
-      region: 'MY',
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(app.map);
+
+    app.markerLayer = L.layerGroup().addTo(app.map);
+
+    app.map.on('click', (e) => {
+      setLatLngInputs(e.latlng.lat, e.latlng.lng);
+      placeDraftMarker(e.latlng.lat, e.latlng.lng);
+      showError('');
     });
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?${params}`;
-    script.async = true;
-    script.onerror = () => showMapMessage('Google Maps を読み込めませんでした。ネットワーク接続を確認してください。');
-    document.head.append(script);
+
+    el.mapMessage.hidden = true;
+    document.body.classList.add('map-ready');
   }
 
   // ---------- 初期化 ----------
@@ -475,8 +424,8 @@
       render();
     });
 
+    initMap();
     render();
-    loadGoogleMaps();
   }
 
   init();

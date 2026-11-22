@@ -5,14 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!--
     Content Security Policy:
-    - 自サイトのスクリプトと Google Maps に必要なドメインのみ許可
+    - スクリプト・CSS は自サイトのファイルのみ（Leaflet も同梱）
+    - 外部から読み込むのは OpenStreetMap の地図画像だけ
     - インラインスクリプトは一切許可しない（XSS 対策）
-    ※ Google Maps 公式ドキュメント推奨の CSP をベースにしています
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:; img-src 'self' https://*.googleapis.com https://*.gstatic.com *.google.com *.googleusercontent.com data:; frame-src *.google.com; connect-src 'self' https://*.googleapis.com *.google.com https://*.gstatic.com data: blob:; font-src https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; worker-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>マレーシア ショッピングモールガイド</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="css/style.css">
-  <script src="js/config.js" defer></script>
+  <script src="vendor/leaflet/leaflet.js" defer></script>
   <script src="js/app.js" defer></script>
 </head>
 <body>
@@ -90,6 +91,7 @@
 
   <footer class="site-footer">
     <p>追加したデータはこのブラウザ内（localStorage）にのみ保存されます。</p>
+    <p>地図: <a href="https://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a> / © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></p>
   </footer>
 </body>
 </html>

@@ -24,35 +24,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 公開に必要なファイルだけを _site にコピー
       - name: Build site
         run: |
           mkdir -p _site
-          cp index.html _site/
-          cp -r css _site/
-          mkdir -p _site/js
-          cp js/app.js _site/js/
-
-      # Secret から config.js を生成（値は JSON エスケープして埋め込む）
-      - name: Generate config.js
-        env:
-          GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
-          MAP_ID: ${{ vars.MAP_ID }}
-        run: |
-          if [ -z "$GOOGLE_MAPS_API_KEY" ]; then
-            echo "::warning::Secret GOOGLE_MAPS_API_KEY が未設定です。地図は表示されません。"
-          fi
-          python3 - <<'EOF'
-          import json, os
-          key = os.environ.get("GOOGLE_MAPS_API_KEY", "")
-          map_id = os.environ.get("MAP_ID") or "DEMO_MAP_ID"
-          with open("_site/js/config.js", "w", encoding="utf-8") as f:
-              f.write(
-                  "window.APP_CONFIG = Object.freeze({ "
-                  f"GOOGLE_MAPS_API_KEY: {json.dumps(key)}, "
-                  f"MAP_ID: {json.dumps(map_id)} "
-                  "});\n"
-              )
-          EOF
+          cp -r index.html css js vendor _site/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

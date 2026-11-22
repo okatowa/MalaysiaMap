@@ -142,7 +142,28 @@ textarea { resize: vertical; }
 
 a { color: var(--primary); }
 
-/* InfoWindow の中身 */
+/* 追加用の赤いピン（Leaflet の divIcon）
+   Leaflet は位置指定に transform を使うため、回転は rotate プロパティで行う */
+.draft-pin {
+  background: var(--accent);
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  rotate: -45deg;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .4);
+  cursor: grab;
+}
+.draft-pin::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* ポップアップの中身 */
 .info { max-width: 260px; }
 .info h3 { margin: 0 0 2px; font-size: 1rem; }
 .info .state { margin: 0; font-size: .8rem; color: var(--muted); }
