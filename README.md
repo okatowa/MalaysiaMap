@@ -27,6 +27,21 @@
 
 API キーがなくても、一覧表示と緯度・経度を直接入力しての追加は使えます。
 
+## GitHub Pages で公開
+
+`main` ブランチに push すると、GitHub Actions（`.github/workflows/deploy.yml`）が自動で公開する。
+API キーはリポジトリに含めず、Secret から `js/config.js` を生成する。
+
+1. GitHub のリポジトリで **Settings → Pages → Build and deployment → Source** を「**GitHub Actions**」にする
+2. **Settings → Secrets and variables → Actions → New repository secret** で
+   `GOOGLE_MAPS_API_KEY` に API キーを登録する
+   （任意：**Variables** タブで `MAP_ID` を登録すると本番用 Map ID を使える）
+3. Google Cloud Console で API キーのウェブサイト制限に `https://okatowa.github.io/MalaysiaMap/*` を追加する
+4. **Actions** タブで「Deploy to GitHub Pages」を実行（または main に push）
+5. `https://okatowa.github.io/MalaysiaMap/` で公開される
+
+※ 公開後のサイトでは、API キーは閲覧者のブラウザから見える（Maps JavaScript API の仕組み上避けられない）。そのため手順 3 のリファラー制限は必須。
+
 ## セキュリティ上の対策
 
 - ユーザー入力は `textContent` で描画し、`innerHTML` は使わない（XSS 対策）
